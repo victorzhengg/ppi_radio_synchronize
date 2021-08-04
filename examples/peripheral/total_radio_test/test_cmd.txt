@@ -1,0 +1,26 @@
+In this version, the project supports features as below:
+
+1. Support to test PER in all radio modes:
+-	BLE 1Mbit
+-	BLE 2Mbit
+-	BLE LR125Kbit
+-	BLE LR500Kbit
+-	NRF 1Mbit
+-	NRF 2Mbit
+-	802.15.4 250Kbit
+
+2. Support all required CLI commands:
+-	Set radio mdoe: radio_mode <sub-command>
+-	Set radio channel: radio_channel <channel-number>
+-	Set radio tx power: radio_tx_power <sub-command>
+-	Set packet type: packet_type <sub-command>
+-	Set packet length: packet_length <1-37>
+-	Set transmit interval: packet_interval <1-1000>, time unit is ms 
+-	Set transmit max count: packet_max_count <1-1000000>
+-	Print all configurature: print_config
+-	Start to transmit(blocking): tx
+-	Start to receive(non-blocking): rx
+-	Stop receiving and report received packet count: stop
+
+If it contains sub-commands, type the command and press enter key, it will list available sub-commands.
+Regarding the usage of UART CLI, please refer to this infocenter link.

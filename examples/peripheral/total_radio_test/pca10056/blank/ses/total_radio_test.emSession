@@ -1,9 +1,9 @@
 <!DOCTYPE CrossStudio_Session_File>
 <session>
  <Bookmarks>
-  <BookmarkItem objectName="" line="815" column="18" path="C:/repo/sdk-repos/nRF5_SDK_16.0/examples/dtm/total_radio_test/rt_core.c" number="1" extra="void rt_test_carrier_transmit(void)" color="5"/>
-  <BookmarkItem objectName="" line="403" column="27" path="C:/repo/sdk-repos/nRF5_SDK_16.0/examples/dtm/total_radio_test/rt_core.c" number="2" extra="static void rt_radio_setup(void)" color="5"/>
   <BookmarkItem objectName="" line="518" column="19" path="C:/repo/sdk-repos/nRF5_SDK_16.0/examples/dtm/total_radio_test/rt_core.c" number="1" extra="if (m_radio_mode == RADIO_MODE_MODE_Ieee802154_250Kbit)" color="5"/>
+  <BookmarkItem objectName="" line="403" column="27" path="C:/repo/sdk-repos/nRF5_SDK_16.0/examples/dtm/total_radio_test/rt_core.c" number="2" extra="static void rt_radio_setup(void)" color="5"/>
+  <BookmarkItem objectName="" line="815" column="18" path="C:/repo/sdk-repos/nRF5_SDK_16.0/examples/dtm/total_radio_test/rt_core.c" number="1" extra="void rt_test_carrier_transmit(void)" color="5"/>
  </Bookmarks>
  <Breakpoints groups="Breakpoints" active_group="Breakpoints">
   <BreakpointListItem trigger="" line="863" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="2" filename="../../../rt_core.c" useHWbreakpoint="false"/>
@@ -63,11 +63,11 @@
   <Watches active="0" update="Never"/>
  </Watch4>
  <Files>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="646" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../rt_core.c" selected="0" top="639" codecName="UTF-8"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="26" y="101" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../main.c" selected="1" top="75" codecName="UTF-8"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="32" y="210" useTextEdit="1" openedFrom="C:/nordic/nRF5SDK1702d674dde/nRF5SDK1702d674dde/examples/peripheral/total_radio_test/rt_cli.c" useBinaryEdit="0" left="0" path="../../../rt_core.c" selected="1" top="201" codecName="UTF-8"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="101" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../main.c" selected="0" top="75" codecName="UTF-8"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="10702" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../../../../modules/nrfx/mdk/nrf52840_bitfields.h" selected="0" top="10695" codecName="UTF-8"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="53" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../rt_core.h" selected="0" top="45" codecName="UTF-8"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="550" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../rt_cli.c" selected="0" top="529" codecName="UTF-8"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="23" y="551" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../rt_cli.c" selected="0" top="384" codecName="UTF-8"/>
  </Files>
- <ARMCrossStudioWindow activeProject="total_radio_test" fileDialogDefaultFilter="*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx" autoConnectTarget="J-Link" buildConfiguration="Debug" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3199"/>
+ <ARMCrossStudioWindow activeProject="total_radio_test" fileDialogDefaultFilter="*.c;*.cpp;*.cxx;*.cc;*.h;*.hpp;*.hxx" autoConnectTarget="J-Link" buildConfiguration="Debug" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3711"/>
 </session>
