@@ -118,12 +118,12 @@ int main(void)
     rt_test_init();
 
     rt_radio_channel_set(11);
-    rt_radio_mode_set(RADIO_MODE_MODE_Ble_LR125Kbit);
+    rt_radio_mode_set(RADIO_MODE_MODE_Ble_1Mbit);
     rt_radio_tx_power_set(RADIO_TXPOWER_TXPOWER_0dBm);
     rt_pkt_type_set(DTM_PKT_PRBS9); 
-    rt_pkt_len_set(255);
-    rt_pkt_tx_count_max_set(1);
-    rt_pkt_tx_interval_set(1);
+    rt_pkt_len_set(10);
+    rt_pkt_tx_count_max_set(100);
+    rt_pkt_tx_interval_set(100);
 
 
     while (1)
