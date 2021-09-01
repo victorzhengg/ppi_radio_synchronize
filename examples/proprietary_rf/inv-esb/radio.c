@@ -293,10 +293,6 @@ static void rtc_tx_event_handler(void)
 
 static void rtc_rx_event_handler(void)
 {
-	
-	uint8_t period_delta;
-
-	
 	if(rx_state ==  RADIO_PERIPH_SEARCH)
 	{
 		 radio_rtc_clear_count();
