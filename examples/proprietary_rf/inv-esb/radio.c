@@ -109,6 +109,7 @@ static void radio_rtc_start(void)
 
 /**@brief Function for stopping the RTC1 timer.
  */
+/*
 static void radio_rtc_stop(void)
 {
     NVIC_DisableIRQ(RADIO_RTC_IRQn);
@@ -119,7 +120,7 @@ static void radio_rtc_stop(void)
     RADIO_RTC->TASKS_CLEAR = 1;
     nrf_delay_us(MAX_RTC_TASKS_DELAY);
 
-}
+}*/
 
 /**@brief Function for setting the RTC Capture Compare register 0, and enabling the corresponding
  *        event.
@@ -407,7 +408,7 @@ static void rtc_rx_event_handler(void)
 
 static void nrf_esb_ptx_event_handler(nrf_esb_evt_t const * p_event)
 {	
-		uint16_t success_rate;
+		uint32_t success_rate;
 	
 		switch (p_event->evt_id)
     {
@@ -432,16 +433,16 @@ static void nrf_esb_ptx_event_handler(nrf_esb_evt_t const * p_event)
 						periph_loss_sync_cnt[periph_cnt] =0;
 /************JS Modify: Add to fix the hop issue when interference   
 				     go to here if get data received **********************************/
-			if (periph_cnt ==1)
-			{		
-						if ( (periph_on_sync[0]?tmp_central_success[0]:true) && (periph_on_sync[1]?tmp_central_success[1]: true) )
-						{	
-									central_loss_cnt[chan_cnt] =0;	//reset loss cnt if rcv pkt from both periphs 
-											
-						}
+						if (periph_cnt ==1)
+						{		
+									if ( (periph_on_sync[0]?tmp_central_success[0]:true) && (periph_on_sync[1]?tmp_central_success[1]: true) )
+									{	
+												central_loss_cnt[chan_cnt] =0;	//reset loss cnt if rcv pkt from both periphs 
+														
+									}
 
-				
-			}	
+							
+						}	
 				
 /*****************************************************/				
 				
@@ -494,7 +495,9 @@ static void nrf_esb_ptx_event_handler(nrf_esb_evt_t const * p_event)
 		
 		if  (m_log_total_cnt[periph_cnt]== LOG_CNT)		
 		{		
-			success_rate = 	m_log_success_cnt[periph_cnt] *100 /m_log_total_cnt[periph_cnt] ;
+			success_rate = (m_log_success_cnt[periph_cnt] *100);
+			success_rate = success_rate / m_log_total_cnt[periph_cnt];
+			
 			NRF_LOG_INFO("Success count for periph %d  = %d", periph_cnt+1, 	m_log_success_cnt[periph_cnt] );
 			m_log_total_cnt[periph_cnt]=0;
 			m_log_success_cnt[periph_cnt]=0;
