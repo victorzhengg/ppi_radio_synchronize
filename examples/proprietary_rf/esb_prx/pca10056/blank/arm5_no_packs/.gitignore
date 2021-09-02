@@ -1,0 +1,4 @@
+_build\
+*.uvoptx
+*.uvguix.vizh
+JLinkLog.txt
