@@ -55,6 +55,12 @@
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 
+/*victor add start*/
+#include "app_timer.h"
+
+APP_TIMER_DEF(m_radio_tx_timer_id);
+/*victor add end*/
+
 static nrf_esb_payload_t        tx_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x01, 0x00, 0x00, 0x00, 0x11, 0x00, 0x00, 0x00);
 
 static nrf_esb_payload_t        rx_payload;
