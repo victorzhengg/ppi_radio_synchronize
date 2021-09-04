@@ -75,10 +75,7 @@ void nrf_esb_event_handler(nrf_esb_evt_t const * p_event)
             if (nrf_esb_read_rx_payload(&rx_payload) == NRF_SUCCESS)
             {
                 // Set LEDs identical to the ones on the PTX.
-                nrf_gpio_pin_write(LED_1, !(rx_payload.data[1]%8>0 && rx_payload.data[1]%8<=4));
-                nrf_gpio_pin_write(LED_2, !(rx_payload.data[1]%8>1 && rx_payload.data[1]%8<=5));
-                nrf_gpio_pin_write(LED_3, !(rx_payload.data[1]%8>2 && rx_payload.data[1]%8<=6));
-                nrf_gpio_pin_write(LED_4, !(rx_payload.data[1]%8>3));
+                nrf_gpio_pin_write(LED_1, (rx_payload.data[7] < 128));
 
                 NRF_LOG_DEBUG("Receiving packet: %02x", rx_payload.data[1]);
             }

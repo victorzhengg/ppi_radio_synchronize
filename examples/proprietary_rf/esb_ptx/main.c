@@ -56,6 +56,13 @@
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 
+
+
+static nrf_esb_payload_t        imu_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08);
+static nrf_esb_payload_t        sync_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08);
+static nrf_esb_payload_t        rx_payload;
+
+
 /**************************victor add start*/
 #include "app_timer.h"
 #include "nrf_drv_clock.h"
@@ -85,6 +92,17 @@ volatile  uint32_t timer_cnt = 0;
 static void radio_tx_timer_handler(void * p_context)
 {
     UNUSED_PARAMETER(p_context);
+		imu_payload.noack = false;
+		if (nrf_esb_write_payload(&imu_payload) == NRF_SUCCESS)
+		{
+				// Toggle one of the LEDs.
+				nrf_gpio_pin_write(LED_1, (imu_payload.data[7] < 128));
+				imu_payload.data[7]++;
+		}
+		else
+		{
+				NRF_LOG_WARNING("Sending packet failed");
+		}
 	  timer_cnt++;
 
 }
@@ -110,10 +128,6 @@ static void app_timers_init(void)
 
 
 /**********************************victor add end*/
-
-static nrf_esb_payload_t        tx_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x01, 0x00, 0x00, 0x00, 0x11, 0x00, 0x00, 0x00);
-
-static nrf_esb_payload_t        rx_payload;
 
 void nrf_esb_event_handler(nrf_esb_evt_t const * p_event)
 {
@@ -220,20 +234,7 @@ int main(void)
 				{
 						NRF_LOG_INFO("timer counter = %d", timer_cnt);
 		/*
-						tx_payload.noack = false;
-						if (nrf_esb_write_payload(&tx_payload) == NRF_SUCCESS)
-						{
-								// Toggle one of the LEDs.
-								nrf_gpio_pin_write(LED_1, !(tx_payload.data[1]%8>0 && tx_payload.data[1]%8<=4));
-								nrf_gpio_pin_write(LED_2, !(tx_payload.data[1]%8>1 && tx_payload.data[1]%8<=5));
-								nrf_gpio_pin_write(LED_3, !(tx_payload.data[1]%8>2 && tx_payload.data[1]%8<=6));
-								nrf_gpio_pin_write(LED_4, !(tx_payload.data[1]%8>3));
-								tx_payload.data[1]++;
-						}
-						else
-						{
-								NRF_LOG_WARNING("Sending packet failed");
-						}
+
 		*/				
 						NRF_LOG_PROCESS();
 				
