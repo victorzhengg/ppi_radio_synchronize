@@ -50,16 +50,66 @@
 #include "boards.h"
 #include "nrf_delay.h"
 #include "app_util.h"
+#include <nrfx_clock.h>
 
 #include "nrf_log.h"
 #include "nrf_log_ctrl.h"
 #include "nrf_log_default_backends.h"
 
-/*victor add start*/
+/**************************victor add start*/
 #include "app_timer.h"
+#include "nrf_drv_clock.h"
+
+#define SYNC_FRAME_INTERVAL     APP_TIMER_TICKS(10)             /*radio tx interval 10ms*/
 
 APP_TIMER_DEF(m_radio_tx_timer_id);
-/*victor add end*/
+
+
+static void lfclk_config(void)
+{
+    ret_code_t err_code = nrf_drv_clock_init();
+    APP_ERROR_CHECK(err_code);
+
+    nrf_drv_clock_lfclk_request(NULL);
+}
+
+
+/**@brief Function for handling the radio tx timer timeout.
+ *
+ * @details This function will be called each time the battery level measurement timer expires.
+ *
+ * @param[in]   p_context   Pointer used for passing some arbitrary information (context) from the
+ *                          app_start_timer() call to the timeout handler.
+ */
+volatile  uint32_t timer_cnt = 0;
+static void radio_tx_timer_handler(void * p_context)
+{
+    UNUSED_PARAMETER(p_context);
+	  timer_cnt++;
+
+}
+
+/**@brief Function for the app timer initialization.
+ *
+ * @details Initializes the timer module. This creates and starts application timers.
+ */
+static void app_timers_init(void)
+{
+    ret_code_t err_code;
+
+    // Initialize timer module.
+    err_code = app_timer_init();
+    APP_ERROR_CHECK(err_code);
+
+    // Create timers.
+    err_code = app_timer_create(&m_radio_tx_timer_id,
+                                APP_TIMER_MODE_REPEATED,
+                                radio_tx_timer_handler);
+    APP_ERROR_CHECK(err_code);
+}
+
+
+/**********************************victor add end*/
 
 static nrf_esb_payload_t        tx_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x01, 0x00, 0x00, 0x00, 0x11, 0x00, 0x00, 0x00);
 
@@ -152,30 +202,41 @@ int main(void)
 
     clocks_start();
 
+
     err_code = esb_init();
     APP_ERROR_CHECK(err_code);
-
-    NRF_LOG_DEBUG("Enhanced ShockBurst Transmitter Example started.");
+	
+		lfclk_config();
+		app_timers_init();
+		
+    NRF_LOG_INFO("Enhanced ShockBurst Transmitter Example started.");
+	
+	  err_code = app_timer_start(m_radio_tx_timer_id, SYNC_FRAME_INTERVAL, NULL);
+    APP_ERROR_CHECK(err_code);
 
     while (true)
     {
-        NRF_LOG_DEBUG("Transmitting packet %02x", tx_payload.data[1]);
-
-        tx_payload.noack = false;
-        if (nrf_esb_write_payload(&tx_payload) == NRF_SUCCESS)
-        {
-            // Toggle one of the LEDs.
-            nrf_gpio_pin_write(LED_1, !(tx_payload.data[1]%8>0 && tx_payload.data[1]%8<=4));
-            nrf_gpio_pin_write(LED_2, !(tx_payload.data[1]%8>1 && tx_payload.data[1]%8<=5));
-            nrf_gpio_pin_write(LED_3, !(tx_payload.data[1]%8>2 && tx_payload.data[1]%8<=6));
-            nrf_gpio_pin_write(LED_4, !(tx_payload.data[1]%8>3));
-            tx_payload.data[1]++;
-        }
-        else
-        {
-            NRF_LOG_WARNING("Sending packet failed");
-        }
-
-        nrf_delay_us(50000);
+				if((timer_cnt % 100) == 0)
+				{
+						NRF_LOG_INFO("timer counter = %d", timer_cnt);
+		/*
+						tx_payload.noack = false;
+						if (nrf_esb_write_payload(&tx_payload) == NRF_SUCCESS)
+						{
+								// Toggle one of the LEDs.
+								nrf_gpio_pin_write(LED_1, !(tx_payload.data[1]%8>0 && tx_payload.data[1]%8<=4));
+								nrf_gpio_pin_write(LED_2, !(tx_payload.data[1]%8>1 && tx_payload.data[1]%8<=5));
+								nrf_gpio_pin_write(LED_3, !(tx_payload.data[1]%8>2 && tx_payload.data[1]%8<=6));
+								nrf_gpio_pin_write(LED_4, !(tx_payload.data[1]%8>3));
+								tx_payload.data[1]++;
+						}
+						else
+						{
+								NRF_LOG_WARNING("Sending packet failed");
+						}
+		*/				
+						NRF_LOG_PROCESS();
+				
+				}
     }
 }
