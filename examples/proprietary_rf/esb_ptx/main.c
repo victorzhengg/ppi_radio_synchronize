@@ -57,14 +57,6 @@
 #include "nrf_log_default_backends.h"
 
 
-
-static nrf_esb_payload_t        imu_payload = {
-	                                            .length = 8,
-	                                            .pipe = 0,
-																							.noack = 1,
-																							.data = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08}
-                                              };
-static nrf_esb_payload_t        sync_payload = NRF_ESB_CREATE_PAYLOAD(0, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08);
 static nrf_esb_payload_t        rx_payload;
 
 
@@ -82,6 +74,30 @@ static nrf_esb_payload_t        rx_payload;
 #include "nrf_drv_clock.h"
 #include "nrf_drv_timer.h"
 
+/*imu frame data packets define*/
+/*data0: frame type: 0 = imu  1 = sync*/
+/*data1: sync flag:  0 = no sync frame followed  1 = sync frame followed*/
+/*data2 ~ data6: reserved for future*/
+/*data7: led1 indicator: 0~255*/
+
+/*sync frame data packets define*/
+/*data0: frame type: 0 = imu  1 = sync*/
+/*data1 ~ data6: reserved for future*/
+/*data7: led1 indicator: 0~255*/
+
+
+static nrf_esb_payload_t        imu_payload = {
+	                                            .length = 8,
+	                                            .pipe = 0,
+																							.noack = 1,
+																							.data = {0x00,0x00,0x03,0x04,0x05,0x06,0x07,0x00}  
+                                              };
+static nrf_esb_payload_t        sync_payload = {
+	                                            .length = 8,
+	                                            .pipe = 0,
+																							.noack = 1,
+																							.data = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x00}  
+                                              };
 
 #define SYNC_FRAME_INTERVAL             APP_TIMER_TICKS(10)             /*radio tx interval 10ms*/
 #define IMU_TO_SYNC_DELAY_US            500     /**/
@@ -114,12 +130,14 @@ static void lfclk_config(void)
     nrf_drv_clock_lfclk_request(NULL);
 }
 
+uint8_t timer2_led2_cnt = 0;
 void radio_tx_timer_event_handler(nrf_timer_event_t event_type, void* p_context)
 {
 		switch (event_type)
     {
         case NRF_TIMER_EVENT_COMPARE0:
-            nrf_gpio_pin_toggle(LED_2);
+						timer2_led2_cnt++;
+				    nrf_gpio_pin_write(LED_2, (timer2_led2_cnt < 128));
             break;
 				
         default:
