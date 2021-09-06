@@ -85,14 +85,14 @@ static nrf_esb_payload_t        rx_payload;
 /*data1 ~ data6: reserved for future*/
 /*data7: led1 indicator: 0~255*/
 
-#define IMU_TYPE_OFFSET   0
-#define IMU_SYNC_FLAG_OFFSET   1
-#define IMU_LED1_OFFSET   7
-
-#define SYNC_TYPE_OFFSET   0
-#define SYNC_LED2_OFFSET   7
+#define PACK_TYPE_OFFSET        0
+#define HAVE_SYNC_FLAG_OFFSET   1
+#define LED_OFFSET              7
 
 #define LED_DUTY_CNT       64
+
+#define PACK_TYPE_IMU       0
+#define PACK_TYPE_SYNC      1
 
 uint8_t sync_flag = 0;
 
@@ -150,8 +150,8 @@ void radio_tx_timer_event_handler(nrf_timer_event_t event_type, void* p_context)
 								nrf_esb_start_tx();
 							
 								/*debug only to indicate the link of communication is good*/
-								nrf_gpio_pin_write(LED_2, (sync_payload.data[SYNC_LED2_OFFSET] < LED_DUTY_CNT));
-								sync_payload.data[SYNC_LED2_OFFSET]++;
+								nrf_gpio_pin_write(LED_2, (sync_payload.data[LED_OFFSET] < LED_DUTY_CNT));
+								sync_payload.data[LED_OFFSET]++;
 						}
 						else
 						{				  
@@ -207,15 +207,15 @@ static void radio_tx_timer_handler(void * p_context)
 		{
 			sync_flag = 1;
 			
-			imu_payload.data[IMU_SYNC_FLAG_OFFSET] = 0;
+			imu_payload.data[HAVE_SYNC_FLAG_OFFSET] = 0;
 			
 			if (nrf_esb_write_payload(&imu_payload) == NRF_SUCCESS)
 			{
 					nrf_esb_start_tx();
 				
 					/*debug only to indicate the link of communication is good*/
-					nrf_gpio_pin_write(LED_1, (imu_payload.data[IMU_LED1_OFFSET] < LED_DUTY_CNT));
-					imu_payload.data[IMU_LED1_OFFSET]++;
+					nrf_gpio_pin_write(LED_1, (imu_payload.data[LED_OFFSET] < LED_DUTY_CNT));
+					imu_payload.data[LED_OFFSET]++;
 			}
 			else
 			{				  
@@ -226,7 +226,7 @@ static void radio_tx_timer_handler(void * p_context)
 		{
 			sync_flag = 0;
 			
-			imu_payload.data[IMU_SYNC_FLAG_OFFSET] = 1;
+			imu_payload.data[HAVE_SYNC_FLAG_OFFSET] = 1;
 			
 			if (nrf_esb_write_payload(&imu_payload) == NRF_SUCCESS)
 			{
@@ -236,8 +236,8 @@ static void radio_tx_timer_handler(void * p_context)
 					nrf_drv_timer_enable(&RADIO_TX_TIMER);
 				
 					/*debug only to indicate the link of communication is good*/
-					nrf_gpio_pin_write(LED_1, (imu_payload.data[IMU_LED1_OFFSET] < LED_DUTY_CNT));
-					imu_payload.data[IMU_LED1_OFFSET]++;
+					nrf_gpio_pin_write(LED_1, (imu_payload.data[LED_OFFSET] < LED_DUTY_CNT));
+					imu_payload.data[LED_OFFSET]++;
 			}
 			else
 			{				  

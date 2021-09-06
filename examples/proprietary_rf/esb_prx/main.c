@@ -58,6 +58,22 @@ uint8_t led_nr;
 
 nrf_esb_payload_t rx_payload;
 
+
+/***********victor add start*/
+#define PACK_TYPE_OFFSET        0
+#define HAVE_SYNC_FLAG_OFFSET   1
+#define LED_OFFSET              7
+
+#define LED_DUTY_CNT       64
+
+#define PACK_TYPE_IMU       0
+#define PACK_TYPE_SYNC      1
+
+
+
+/***********victor add end*/
+
+
 /*lint -save -esym(40, BUTTON_1) -esym(40, BUTTON_2) -esym(40, BUTTON_3) -esym(40, BUTTON_4) -esym(40, LED_1) -esym(40, LED_2) -esym(40, LED_3) -esym(40, LED_4) */
 
 void nrf_esb_event_handler(nrf_esb_evt_t const * p_event)
@@ -74,8 +90,22 @@ void nrf_esb_event_handler(nrf_esb_evt_t const * p_event)
             NRF_LOG_DEBUG("RX RECEIVED EVENT");
             if (nrf_esb_read_rx_payload(&rx_payload) == NRF_SUCCESS)
             {
-                // Set LEDs identical to the ones on the PTX.
-                nrf_gpio_pin_write(LED_1, (rx_payload.data[7] < 128));
+                /*victor modify start*/
+							  if(rx_payload.data[PACK_TYPE_OFFSET] == PACK_TYPE_IMU)
+								{
+										nrf_gpio_pin_write(LED_1, (rx_payload.data[LED_OFFSET] < LED_DUTY_CNT));
+									
+										if(rx_payload.data[HAVE_SYNC_FLAG_OFFSET] == true)  /*this imu followed a sync */
+										{
+												/*set PPI and GPIO*/
+												
+										}
+								}
+								else /*PACK_TYPE_SYNC*/
+								{
+										nrf_gpio_pin_write(LED_2, (rx_payload.data[LED_OFFSET] < LED_DUTY_CNT));
+								}
+                
 
                 NRF_LOG_DEBUG("Receiving packet: %02x", rx_payload.data[1]);
             }
