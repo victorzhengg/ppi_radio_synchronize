@@ -85,19 +85,29 @@ static nrf_esb_payload_t        rx_payload;
 /*data1 ~ data6: reserved for future*/
 /*data7: led1 indicator: 0~255*/
 
+#define IMU_TYPE_OFFSET   0
+#define IMU_SYNC_FLAG_OFFSET   1
+#define IMU_LED1_OFFSET   7
+
+#define SYNC_TYPE_OFFSET   0
+#define SYNC_LED2_OFFSET   7
+
+#define LED_DUTY_CNT       64
+
+uint8_t sync_flag = 0;
 
 static nrf_esb_payload_t        imu_payload = {
-	                                            .length = 8,
-	                                            .pipe = 0,
-																							.noack = 1,
-																							.data = {0x00,0x00,0x03,0x04,0x05,0x06,0x07,0x00}  
+																								.length = 8,
+																								.pipe = 0,
+																								.noack = 1,
+																								.data = {0x00,0x00,0x03,0x04,0x05,0x06,0x07,0x00}  
                                               };
 static nrf_esb_payload_t        sync_payload = {
-	                                            .length = 8,
-	                                            .pipe = 0,
-																							.noack = 1,
-																							.data = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x00}  
-                                              };
+																								.length = 8,
+																								.pipe = 0,
+																								.noack = 1,
+																								.data = {0x01,0x00,0x03,0x04,0x05,0x06,0x07,0x00}  
+																							 };
 
 #define SYNC_FRAME_INTERVAL             APP_TIMER_TICKS(10)             /*radio tx interval 10ms*/
 #define IMU_TO_SYNC_DELAY_US            500     /**/
@@ -130,14 +140,23 @@ static void lfclk_config(void)
     nrf_drv_clock_lfclk_request(NULL);
 }
 
-uint8_t timer2_led2_cnt = 0;
 void radio_tx_timer_event_handler(nrf_timer_event_t event_type, void* p_context)
 {
 		switch (event_type)
     {
         case NRF_TIMER_EVENT_COMPARE0:
-						timer2_led2_cnt++;
-				    nrf_gpio_pin_write(LED_2, (timer2_led2_cnt < 128));
+						if (nrf_esb_write_payload(&sync_payload) == NRF_SUCCESS)
+						{
+								nrf_esb_start_tx();
+							
+								/*debug only to indicate the link of communication is good*/
+								nrf_gpio_pin_write(LED_2, (sync_payload.data[SYNC_LED2_OFFSET] < LED_DUTY_CNT));
+								sync_payload.data[SYNC_LED2_OFFSET]++;
+						}
+						else
+						{				  
+								NRF_LOG_WARNING("Sending sync packet failed");
+						}	
             break;
 				
         default:
@@ -184,23 +203,48 @@ volatile  uint32_t timer_cnt = 0;
 static void radio_tx_timer_handler(void * p_context)
 {
     UNUSED_PARAMETER(p_context);
-		if (nrf_esb_write_payload(&imu_payload) == NRF_SUCCESS)
+	  if(sync_flag == 0)      /*imu only*/
 		{
-				nrf_esb_start_tx();
+			sync_flag = 1;
 			
-				/*start the timer1 to generate the delay between imu frame and sync frame*/
-			  nrf_drv_timer_enable(&RADIO_TX_TIMER);
+			imu_payload.data[IMU_SYNC_FLAG_OFFSET] = 0;
 			
-				/*debug only to indicate the link of communication is good*/
-				nrf_gpio_pin_write(LED_1, (imu_payload.data[7] < 128));
-				imu_payload.data[7]++;
+			if (nrf_esb_write_payload(&imu_payload) == NRF_SUCCESS)
+			{
+					nrf_esb_start_tx();
+				
+					/*debug only to indicate the link of communication is good*/
+					nrf_gpio_pin_write(LED_1, (imu_payload.data[IMU_LED1_OFFSET] < LED_DUTY_CNT));
+					imu_payload.data[IMU_LED1_OFFSET]++;
+			}
+			else
+			{				  
+					NRF_LOG_WARNING("Sending imu without sync packet failed");
+			}
 		}
-		else
+		else /*imu followed by a sync */
 		{
-				NRF_LOG_WARNING("Sending packet failed");
+			sync_flag = 0;
+			
+			imu_payload.data[IMU_SYNC_FLAG_OFFSET] = 1;
+			
+			if (nrf_esb_write_payload(&imu_payload) == NRF_SUCCESS)
+			{
+					nrf_esb_start_tx();
+				
+					/*start the timer1 to generate the delay between imu frame and sync frame*/
+					nrf_drv_timer_enable(&RADIO_TX_TIMER);
+				
+					/*debug only to indicate the link of communication is good*/
+					nrf_gpio_pin_write(LED_1, (imu_payload.data[IMU_LED1_OFFSET] < LED_DUTY_CNT));
+					imu_payload.data[IMU_LED1_OFFSET]++;
+			}
+			else
+			{				  
+					NRF_LOG_WARNING("Sending imu with sync packet failed");
+			}			
+			
 		}
-	  timer_cnt++;
-
 }
 
 /**@brief Function for the app timer initialization.
@@ -324,15 +368,7 @@ int main(void)
     APP_ERROR_CHECK(err_code);
 
     while (true)
-    {
-				if((timer_cnt % 100) == 0)
-				{
-						NRF_LOG_INFO("timer counter = %d", timer_cnt);
-		/*
-
-		*/				
-						NRF_LOG_PROCESS();
-				
-				}
+    {			
+			NRF_LOG_PROCESS();
     }
 }
