@@ -60,6 +60,12 @@ nrf_esb_payload_t rx_payload;
 
 
 /***********victor add start*/
+#include "app_timer.h"
+#include "nrf_drv_clock.h"
+#include "nrf_drv_timer.h"
+#include "nrf_drv_gpiote.h"
+
+
 #define PACK_TYPE_OFFSET        0
 #define HAVE_SYNC_FLAG_OFFSET   1
 #define LED_OFFSET              7

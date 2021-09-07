@@ -141,7 +141,7 @@ static nrf_esb_payload_t        sync_payload = {
 }
 
 
-APP_TIMER_DEF(m_radio_tx_timer_id);
+APP_TIMER_DEF(m_ultrasonic_timer_id);
 const nrf_drv_timer_t ULTRASONIC_TIMER = NRF_DRV_TIMER_INSTANCE(1);
 
 static void lfclk_config(void)
@@ -317,7 +317,7 @@ static void app_timers_init(void)
     APP_ERROR_CHECK(err_code);
 
     // Create timers.
-    err_code = app_timer_create(&m_radio_tx_timer_id,
+    err_code = app_timer_create(&m_ultrasonic_timer_id,
                                 APP_TIMER_MODE_REPEATED,
                                 radio_tx_low_freq_timer_handler);
     APP_ERROR_CHECK(err_code);
@@ -435,7 +435,7 @@ int main(void)
 	
     NRF_LOG_INFO("Enhanced ShockBurst Transmitter Example started.");
 	
-	  err_code = app_timer_start(m_radio_tx_timer_id, SYNC_FRAME_INTERVAL, NULL);
+	  err_code = app_timer_start(m_ultrasonic_timer_id, SYNC_FRAME_INTERVAL, NULL);
     APP_ERROR_CHECK(err_code);
 
     while (true)
