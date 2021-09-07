@@ -72,8 +72,8 @@ nrf_esb_payload_t rx_payload;
 
 #define LED_DUTY_CNT       64
 
-#define PACK_TYPE_IMU       0
-#define PACK_TYPE_SYNC      1
+#define PACK_TYPE_IMU       1
+#define PACK_TYPE_SYNC      2
 
 
 
@@ -147,7 +147,7 @@ uint32_t esb_init( void )
     nrf_esb_config.bitrate                  = NRF_ESB_BITRATE_2MBPS;
     nrf_esb_config.mode                     = NRF_ESB_MODE_PRX;
     nrf_esb_config.event_handler            = nrf_esb_event_handler;
-    nrf_esb_config.selective_auto_ack       = false;
+    nrf_esb_config.selective_auto_ack       = true;
 
     err_code = nrf_esb_init(&nrf_esb_config);
     VERIFY_SUCCESS(err_code);
