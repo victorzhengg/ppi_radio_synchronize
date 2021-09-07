@@ -75,7 +75,17 @@ nrf_esb_payload_t rx_payload;
 #define PACK_TYPE_IMU       1
 #define PACK_TYPE_SYNC      2
 
+#define     ULTRASONIC_PPI_GPIO_PIN                3
 
+nrfx_err_t ultrasonic_ppi_gpio_init(void)
+{
+		nrf_gpio_cfg(ULTRASONIC_PPI_GPIO_PIN,
+						 NRF_GPIO_PIN_DIR_OUTPUT,
+						 NRF_GPIO_PIN_INPUT_DISCONNECT,
+						 NRF_GPIO_PIN_NOPULL,
+						 NRF_GPIO_PIN_H0H1,
+						 NRF_GPIO_PIN_NOSENSE);		
+}
 
 /***********victor add end*/
 
@@ -171,6 +181,8 @@ int main(void)
 
     gpio_init();
 
+		ultrasonic_ppi_gpio_init();
+	
     err_code = NRF_LOG_INIT(NULL);
     APP_ERROR_CHECK(err_code);
 

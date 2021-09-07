@@ -983,7 +983,9 @@ void RADIO_IRQHandler()
         // Call the correct on_radio_disable function, depending on the current protocol state
         if (on_radio_disabled)
         {
+						if(m_rx_payload_buffer[2] == 2) nrf_gpio_port_out_set(NRF_P0,0x8);
             on_radio_disabled();
+					  nrf_gpio_pin_clear(3);
         }
     }
 
