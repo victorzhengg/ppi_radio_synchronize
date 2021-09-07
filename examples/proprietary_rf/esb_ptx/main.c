@@ -73,6 +73,7 @@ static nrf_esb_payload_t        rx_payload;
 #include "app_timer.h"
 #include "nrf_drv_clock.h"
 #include "nrf_drv_timer.h"
+#include "nrf_drv_gpiote.h"
 
 /*imu frame data packets define*/
 /*data0: frame type: 0 = imu  1 = sync*/
@@ -101,6 +102,10 @@ static nrf_esb_payload_t        rx_payload;
 #define     ULTRASONIC_PPI_GPIO_HIGH               7
 #define     ULTRASONIC_PPI_TIMER_START             8
 #define     ULTRASONIC_PPI_GPIO_LOW                9  
+
+#define     ULTRASONIC_PPI_GPIO_PIN                20 /*LED4 in nRF52DK*/
+#define     ULTRASONIC_GPIOTE_CH0                  0
+#define     ULTRASONIC_GPIOTE_CH1                  1
 
 uint8_t comm_flag = PACK_TYPE_IMU;
 uint8_t sync_send_flag = 0;
@@ -180,30 +185,78 @@ void radio_tx_send_sync(void)
 		}
 }
 
-void ultrasonic_ppi_gpio_init(void)
+nrfx_err_t ultrasonic_ppi_gpio_init(void)
 {
-	  
+		uint32_t err_code;
+	  nrfx_gpiote_out_config_t  config;
 	
+	  nrf_gpio_cfg(ULTRASONIC_PPI_GPIO_PIN,
+								 NRF_GPIO_PIN_DIR_OUTPUT,
+								 NRF_GPIO_PIN_INPUT_DISCONNECT,
+								 NRF_GPIO_PIN_NOPULL,
+								 NRF_GPIO_PIN_H0H1,
+								 NRF_GPIO_PIN_NOSENSE);
+	
+    if (!nrf_drv_gpiote_is_init())
+    {
+        err_code = nrf_drv_gpiote_init();
+        VERIFY_SUCCESS(err_code);
+    }	  
+
+		nrf_gpiote_task_configure(ULTRASONIC_GPIOTE_CH0,
+															ULTRASONIC_PPI_GPIO_PIN,
+															NRF_GPIOTE_POLARITY_LOTOHI,
+															NRF_GPIOTE_INITIAL_VALUE_LOW);
+		
+		nrf_gpiote_task_enable(ULTRASONIC_GPIOTE_CH0);
+
+		nrf_gpiote_task_configure(ULTRASONIC_GPIOTE_CH1,
+															ULTRASONIC_PPI_GPIO_PIN,
+															NRF_GPIOTE_POLARITY_HITOLO,
+															NRF_GPIOTE_INITIAL_VALUE_LOW);
+		
+		nrf_gpiote_task_enable(ULTRASONIC_GPIOTE_CH1);
+		
+		
+		nrfx_gpiote_out_init(ULTRASONIC_PPI_GPIO_PIN,&config);
+		
 		NRF_PPI->CH[ULTRASONIC_PPI_TIMER_START].EEP = (uint32_t)&NRF_RADIO->EVENTS_END;
     NRF_PPI->CH[ULTRASONIC_PPI_TIMER_START].TEP = (uint32_t)&ULTRASONIC_TIMER.p_reg->TASKS_START;
 	  
 		NRF_PPI->CH[ULTRASONIC_PPI_GPIO_HIGH].EEP = (uint32_t)&NRF_RADIO->EVENTS_END;
-    NRF_PPI->CH[ULTRASONIC_PPI_GPIO_HIGH].TEP = (uint32_t)&ULTRASONIC_TIMER.p_reg->TASKS_START;
+    NRF_PPI->CH[ULTRASONIC_PPI_GPIO_HIGH].TEP = (uint32_t)&NRF_GPIOTE->TASKS_SET[ULTRASONIC_GPIOTE_CH0];
 
     NRF_PPI->CH[ULTRASONIC_PPI_GPIO_LOW].EEP  = (uint32_t)&ULTRASONIC_TIMER.p_reg->EVENTS_COMPARE[0];
-    NRF_PPI->CH[ULTRASONIC_PPI_GPIO_LOW].TEP  = (uint32_t)&NRF_ESB_SYS_TIMER->TASKS_SHUTDOWN;
+    NRF_PPI->CH[ULTRASONIC_PPI_GPIO_LOW].TEP  = (uint32_t)&NRF_GPIOTE->TASKS_CLR[ULTRASONIC_GPIOTE_CH0];
+		
+		return NRFX_SUCCESS;
 }
 
-void radio_tx_ppi_clear(void)
+void ultrasonic_ppi_ppi_enable(void)
 {
+    NRF_RADIO->EVENTS_END = 0;
+    ULTRASONIC_TIMER.p_reg->EVENTS_COMPARE[0] = 0;
+
+    NRF_PPI->CHENSET = (1 << ULTRASONIC_PPI_TIMER_START) |
+                       (1 << ULTRASONIC_PPI_GPIO_HIGH) |
+                       (1 << ULTRASONIC_PPI_GPIO_LOW);
+    
+    
 }
-
-
+void ultrasonic_ppi_ppi_disable(void)
+{
+		NRF_PPI->CHENCLR = (1 << ULTRASONIC_PPI_TIMER_START) |
+											 (1 << ULTRASONIC_PPI_GPIO_HIGH) |
+											 (1 << ULTRASONIC_PPI_GPIO_LOW);
+}
+uint32_t test_flag_cnt = 0;
 void radio_tx_high_freq_timer_event_handler(nrf_timer_event_t event_type, void* p_context)
 {
 		switch (event_type)
     {
         case NRF_TIMER_EVENT_COMPARE0:	
+						ultrasonic_ppi_ppi_disable();
+						test_flag_cnt++;
             break;
 				
         default:
@@ -238,11 +291,12 @@ static void radio_tx_timer_init(void)
  * @param[in]   p_context   Pointer used for passing some arbitrary information (context) from the
  *                          app_start_timer() call to the timeout handler.
  */
-volatile  uint32_t timer_cnt = 0;
 static void radio_tx_low_freq_timer_handler(void * p_context)
 {
     UNUSED_PARAMETER(p_context);
-	  
+	
+	  ultrasonic_ppi_ppi_disable();
+	
 	  comm_flag = PACK_TYPE_IMU;
 		radio_tx_send_imu();
     
@@ -288,6 +342,7 @@ void nrf_esb_event_handler(nrf_esb_evt_t const * p_event)
 						{
 								if(sync_send_flag == 1)
 								{
+										ultrasonic_ppi_ppi_enable();
 										comm_flag = PACK_TYPE_SYNC;
 										radio_tx_send_sync();
 								}
@@ -364,6 +419,8 @@ int main(void)
     ret_code_t err_code;
 
     gpio_init();
+	
+		ultrasonic_ppi_gpio_init();
 
     err_code = NRF_LOG_INIT(NULL);
     APP_ERROR_CHECK(err_code);
