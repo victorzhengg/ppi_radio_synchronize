@@ -103,7 +103,7 @@ static nrf_esb_payload_t        rx_payload;
 #define     ULTRASONIC_PPI_TIMER_START             8
 #define     ULTRASONIC_PPI_GPIO_LOW                9  
 
-#define     ULTRASONIC_PPI_GPIO_PIN                20 /*LED4 in nRF52DK*/
+#define     ULTRASONIC_PPI_GPIO_PIN                3
 #define     ULTRASONIC_GPIOTE_CH0                  0
 #define     ULTRASONIC_GPIOTE_CH1                  1
 
@@ -190,12 +190,7 @@ nrfx_err_t ultrasonic_ppi_gpio_init(void)
 		uint32_t err_code;
 	  nrfx_gpiote_out_config_t  config;
 	
-	  nrf_gpio_cfg(ULTRASONIC_PPI_GPIO_PIN,
-								 NRF_GPIO_PIN_DIR_OUTPUT,
-								 NRF_GPIO_PIN_INPUT_DISCONNECT,
-								 NRF_GPIO_PIN_NOPULL,
-								 NRF_GPIO_PIN_H0H1,
-								 NRF_GPIO_PIN_NOSENSE);
+
 	
     if (!nrf_drv_gpiote_is_init())
     {
@@ -210,13 +205,12 @@ nrfx_err_t ultrasonic_ppi_gpio_init(void)
 		
 		nrf_gpiote_task_enable(ULTRASONIC_GPIOTE_CH0);
 
-		nrf_gpiote_task_configure(ULTRASONIC_GPIOTE_CH1,
-															ULTRASONIC_PPI_GPIO_PIN,
-															NRF_GPIOTE_POLARITY_HITOLO,
-															NRF_GPIOTE_INITIAL_VALUE_LOW);
-		
-		nrf_gpiote_task_enable(ULTRASONIC_GPIOTE_CH1);
-		
+	  nrf_gpio_cfg(ULTRASONIC_PPI_GPIO_PIN,
+								 NRF_GPIO_PIN_DIR_OUTPUT,
+								 NRF_GPIO_PIN_INPUT_DISCONNECT,
+								 NRF_GPIO_PIN_NOPULL,
+								 NRF_GPIO_PIN_H0H1,
+								 NRF_GPIO_PIN_NOSENSE);		
 		
 		nrfx_gpiote_out_init(ULTRASONIC_PPI_GPIO_PIN,&config);
 		
