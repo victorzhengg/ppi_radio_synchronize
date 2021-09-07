@@ -91,27 +91,34 @@ static nrf_esb_payload_t        rx_payload;
 
 #define LED_DUTY_CNT       64
 
-#define PACK_TYPE_IMU       0
-#define PACK_TYPE_SYNC      1
+#define PACK_TYPE_NONE      0
+#define PACK_TYPE_IMU       1
+#define PACK_TYPE_SYNC      2
 
-uint8_t sync_flag = 0;
+#define SYNC_FRAME_INTERVAL             APP_TIMER_TICKS(10)             /*radio tx interval 10ms*/
+#define SYNC_TO_GPIO_HIGH_DELAY_US      500     /**/
+
+#define     ULTRASONIC_PPI_GPIO_HIGH               7
+#define     ULTRASONIC_PPI_TIMER_START             8
+#define     ULTRASONIC_PPI_GPIO_LOW                9  
+
+uint8_t comm_flag = PACK_TYPE_IMU;
+uint8_t sync_send_flag = 0;
 
 static nrf_esb_payload_t        imu_payload = {
 																								.length = 8,
 																								.pipe = 0,
 																								.noack = 1,
-																								.data = {0x00,0x00,0x03,0x04,0x05,0x06,0x07,0x00}  
+																								.data = {PACK_TYPE_IMU,0x00,0x03,0x04,0x05,0x06,0x07,0x00}  
                                               };
 static nrf_esb_payload_t        sync_payload = {
 																								.length = 8,
 																								.pipe = 0,
 																								.noack = 1,
-																								.data = {0x01,0x00,0x03,0x04,0x05,0x06,0x07,0x00}  
+																								.data = {PACK_TYPE_SYNC,0x00,0x03,0x04,0x05,0x06,0x07,0x00}  
 																							 };
 
-#define SYNC_FRAME_INTERVAL             APP_TIMER_TICKS(10)             /*radio tx interval 10ms*/
-#define IMU_TO_SYNC_DELAY_US            500     /**/
-#define SYNC_TO_GPIO_HIGH_DELAY_US      500     /**/
+
 
 #define NRF_ESB_PPI_SYNC_CONFIG     {.protocol               = NRF_ESB_PROTOCOL_ESB_DPL,         \
 																		 .mode                   = NRF_ESB_MODE_PTX,                 \
@@ -119,7 +126,7 @@ static nrf_esb_payload_t        sync_payload = {
 																		 .bitrate                = NRF_ESB_BITRATE_2MBPS,            \
 																		 .crc                    = NRF_ESB_CRC_16BIT,                \
 																		 .tx_output_power        = NRF_ESB_TX_POWER_0DBM,            \
-																		 .retransmit_delay       = 500,                                \
+																		 .retransmit_delay       = 200,                                \
 																		 .retransmit_count       = 1,                                \
 																		 .tx_mode                = NRF_ESB_TXMODE_MANUAL,            \
 																		 .radio_irq_priority     = 1,                                \
@@ -130,7 +137,7 @@ static nrf_esb_payload_t        sync_payload = {
 
 
 APP_TIMER_DEF(m_radio_tx_timer_id);
-const nrf_drv_timer_t RADIO_TX_TIMER = NRF_DRV_TIMER_INSTANCE(1);
+const nrf_drv_timer_t ULTRASONIC_TIMER = NRF_DRV_TIMER_INSTANCE(1);
 
 static void lfclk_config(void)
 {
@@ -140,23 +147,63 @@ static void lfclk_config(void)
     nrf_drv_clock_lfclk_request(NULL);
 }
 
-void radio_tx_timer_event_handler(nrf_timer_event_t event_type, void* p_context)
+void radio_tx_send_imu(void)
+{
+		if (nrf_esb_write_payload(&imu_payload) == NRF_SUCCESS)
+		{
+				nrf_esb_start_tx();
+			
+				/*debug only to indicate the link of communication is good*/
+				nrf_gpio_pin_write(LED_1, (imu_payload.data[LED_OFFSET] < LED_DUTY_CNT));
+				imu_payload.data[LED_OFFSET]++;
+		}
+		else
+		{				  
+				NRF_LOG_WARNING("Sending imu without sync packet failed");
+		}
+}
+
+
+void radio_tx_send_sync(void)
+{
+		if (nrf_esb_write_payload(&sync_payload) == NRF_SUCCESS)
+		{
+				nrf_esb_start_tx();
+			
+				/*debug only to indicate the link of communication is good*/
+				nrf_gpio_pin_write(LED_2, (sync_payload.data[LED_OFFSET] < LED_DUTY_CNT));
+				sync_payload.data[LED_OFFSET]++;
+		}
+		else
+		{				  
+				NRF_LOG_WARNING("Sending sync packet failed");
+		}
+}
+
+void ultrasonic_ppi_gpio_init(void)
+{
+	  
+	
+		NRF_PPI->CH[ULTRASONIC_PPI_TIMER_START].EEP = (uint32_t)&NRF_RADIO->EVENTS_END;
+    NRF_PPI->CH[ULTRASONIC_PPI_TIMER_START].TEP = (uint32_t)&ULTRASONIC_TIMER.p_reg->TASKS_START;
+	  
+		NRF_PPI->CH[ULTRASONIC_PPI_GPIO_HIGH].EEP = (uint32_t)&NRF_RADIO->EVENTS_END;
+    NRF_PPI->CH[ULTRASONIC_PPI_GPIO_HIGH].TEP = (uint32_t)&ULTRASONIC_TIMER.p_reg->TASKS_START;
+
+    NRF_PPI->CH[ULTRASONIC_PPI_GPIO_LOW].EEP  = (uint32_t)&ULTRASONIC_TIMER.p_reg->EVENTS_COMPARE[0];
+    NRF_PPI->CH[ULTRASONIC_PPI_GPIO_LOW].TEP  = (uint32_t)&NRF_ESB_SYS_TIMER->TASKS_SHUTDOWN;
+}
+
+void radio_tx_ppi_clear(void)
+{
+}
+
+
+void radio_tx_high_freq_timer_event_handler(nrf_timer_event_t event_type, void* p_context)
 {
 		switch (event_type)
     {
-        case NRF_TIMER_EVENT_COMPARE0:
-						if (nrf_esb_write_payload(&sync_payload) == NRF_SUCCESS)
-						{
-								nrf_esb_start_tx();
-							
-								/*debug only to indicate the link of communication is good*/
-								nrf_gpio_pin_write(LED_2, (sync_payload.data[LED_OFFSET] < LED_DUTY_CNT));
-								sync_payload.data[LED_OFFSET]++;
-						}
-						else
-						{				  
-								NRF_LOG_WARNING("Sending sync packet failed");
-						}	
+        case NRF_TIMER_EVENT_COMPARE0:	
             break;
 				
         default:
@@ -168,29 +215,21 @@ static void radio_tx_timer_init(void)
 {
 		ret_code_t err_code;
 	  uint32_t cc0_ticks;
-	  uint32_t cc1_ticks;
 	
-	    //Configure TIMER_LED for generating simple light effect - leds on board will invert his state one after the other.
+	  //Configure TIMER_LED for generating simple light effect - leds on board will invert his state one after the other.
     nrf_drv_timer_config_t timer_cfg = NRF_DRV_TIMER_DEFAULT_CONFIG;
-    err_code = nrf_drv_timer_init(&RADIO_TX_TIMER, &timer_cfg, 
-	                                 radio_tx_timer_event_handler);
+    err_code = nrf_drv_timer_init(&ULTRASONIC_TIMER, &timer_cfg, 
+	                                 radio_tx_high_freq_timer_event_handler);
     APP_ERROR_CHECK(err_code);
 
 	
-    cc0_ticks = nrf_drv_timer_us_to_ticks(&RADIO_TX_TIMER, IMU_TO_SYNC_DELAY_US);
+    cc0_ticks = nrf_drv_timer_us_to_ticks(&ULTRASONIC_TIMER, SYNC_TO_GPIO_HIGH_DELAY_US);
 	
     /*set CC0*/
-    nrf_drv_timer_extended_compare(&RADIO_TX_TIMER, NRF_TIMER_CC_CHANNEL0,
+    nrf_drv_timer_extended_compare(&ULTRASONIC_TIMER, NRF_TIMER_CC_CHANNEL0,
                                   	cc0_ticks,
                                    	NRF_TIMER_SHORT_COMPARE0_STOP_MASK | NRF_TIMER_SHORT_COMPARE0_CLEAR_MASK, 
-	                                  true);
-	
-	  cc1_ticks = nrf_drv_timer_us_to_ticks(&RADIO_TX_TIMER, SYNC_TO_GPIO_HIGH_DELAY_US);
-		
-	  /*set CC1*/
-    nrfx_timer_compare(&RADIO_TX_TIMER, NRF_TIMER_CC_CHANNEL1, cc1_ticks, false);
-
-    
+	                                  true);    
 }
 /**@brief Function for handling the radio tx timer timeout.
  *
@@ -200,50 +239,20 @@ static void radio_tx_timer_init(void)
  *                          app_start_timer() call to the timeout handler.
  */
 volatile  uint32_t timer_cnt = 0;
-static void radio_tx_timer_handler(void * p_context)
+static void radio_tx_low_freq_timer_handler(void * p_context)
 {
     UNUSED_PARAMETER(p_context);
-	  if(sync_flag == 0)      /*imu only*/
+	  
+	  comm_flag = PACK_TYPE_IMU;
+		radio_tx_send_imu();
+    
+    if(sync_send_flag == 0)
 		{
-			sync_flag = 1;
-			
-			imu_payload.data[HAVE_SYNC_FLAG_OFFSET] = 0;
-			
-			if (nrf_esb_write_payload(&imu_payload) == NRF_SUCCESS)
-			{
-					nrf_esb_start_tx();
-				
-					/*debug only to indicate the link of communication is good*/
-					nrf_gpio_pin_write(LED_1, (imu_payload.data[LED_OFFSET] < LED_DUTY_CNT));
-					imu_payload.data[LED_OFFSET]++;
-			}
-			else
-			{				  
-					NRF_LOG_WARNING("Sending imu without sync packet failed");
-			}
+				sync_send_flag = 1;
 		}
-		else /*imu followed by a sync */
+		else
 		{
-			sync_flag = 0;
-			
-			imu_payload.data[HAVE_SYNC_FLAG_OFFSET] = 1;
-			
-			if (nrf_esb_write_payload(&imu_payload) == NRF_SUCCESS)
-			{
-					nrf_esb_start_tx();
-				
-					/*start the timer1 to generate the delay between imu frame and sync frame*/
-					nrf_drv_timer_enable(&RADIO_TX_TIMER);
-				
-					/*debug only to indicate the link of communication is good*/
-					nrf_gpio_pin_write(LED_1, (imu_payload.data[LED_OFFSET] < LED_DUTY_CNT));
-					imu_payload.data[LED_OFFSET]++;
-			}
-			else
-			{				  
-					NRF_LOG_WARNING("Sending imu with sync packet failed");
-			}			
-			
+			  sync_send_flag = 0;
 		}
 }
 
@@ -262,7 +271,7 @@ static void app_timers_init(void)
     // Create timers.
     err_code = app_timer_create(&m_radio_tx_timer_id,
                                 APP_TIMER_MODE_REPEATED,
-                                radio_tx_timer_handler);
+                                radio_tx_low_freq_timer_handler);
     APP_ERROR_CHECK(err_code);
 }
 
@@ -275,6 +284,17 @@ void nrf_esb_event_handler(nrf_esb_evt_t const * p_event)
     {
         case NRF_ESB_EVENT_TX_SUCCESS:
             NRF_LOG_DEBUG("TX SUCCESS EVENT");
+				    if(comm_flag == PACK_TYPE_IMU)
+						{
+								if(sync_send_flag == 1)
+								{
+										comm_flag = PACK_TYPE_SYNC;
+										radio_tx_send_sync();
+								}
+						}
+						else
+						{
+						}
             break;
         case NRF_ESB_EVENT_TX_FAILED:
             NRF_LOG_DEBUG("TX FAILED EVENT");
