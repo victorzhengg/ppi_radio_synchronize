@@ -953,7 +953,9 @@ static uint32_t nrf_esb_get_clear_interrupts(uint32_t * p_interrupts)
 
     return NRF_SUCCESS;
 }
-
+/**/
+#include "nrf_drv_timer.h"
+extern const nrf_drv_timer_t *p_ultrasonic_timer;
 
 void RADIO_IRQHandler()
 {
@@ -983,9 +985,14 @@ void RADIO_IRQHandler()
         // Call the correct on_radio_disable function, depending on the current protocol state
         if (on_radio_disabled)
         {
-						if(m_rx_payload_buffer[2] == 2) nrf_gpio_port_out_set(NRF_P0,0x8);
+						#ifdef BOARD_NRF_ESB_MODE_PRX 
+						if(m_rx_payload_buffer[2] == 1)
+						{
+								p_ultrasonic_timer->p_reg->TASKS_STOP = 1;
+								p_ultrasonic_timer->p_reg->TASKS_CLEAR = 1;
+						}
+						#endif
             on_radio_disabled();
-					  nrf_gpio_pin_clear(3);
         }
     }
 

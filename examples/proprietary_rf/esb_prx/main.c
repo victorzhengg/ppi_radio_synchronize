@@ -77,16 +77,103 @@ nrf_esb_payload_t rx_payload;
 
 #define     ULTRASONIC_PPI_GPIO_PIN                3
 
+#define     ULTRASONIC_GPIOTE_CH0                  0
+
+ 
+#define     ULTRASONIC_PPI_CH_TIMER_START          7
+#define     ULTRASONIC_PPI_CH_GPIO_LOW             8 
+#define     ULTRASONIC_PPI_CH_GPIO_HIGH            9 
+
+#define     EVENT_END_GPIO_LOW_DELAY_US            50
+#define     GPIO_LOW_TO_HIGH_DELAY_US              EVENT_END_GPIO_LOW_DELAY_US + 50
+
+const nrf_drv_timer_t ULTRASONIC_TIMER = NRF_DRV_TIMER_INSTANCE(1);
+
+const nrf_drv_timer_t *p_ultrasonic_timer = &ULTRASONIC_TIMER;
+
 nrfx_err_t ultrasonic_ppi_gpio_init(void)
 {
-		nrf_gpio_cfg(ULTRASONIC_PPI_GPIO_PIN,
-						 NRF_GPIO_PIN_DIR_OUTPUT,
-						 NRF_GPIO_PIN_INPUT_DISCONNECT,
-						 NRF_GPIO_PIN_NOPULL,
-						 NRF_GPIO_PIN_H0H1,
-						 NRF_GPIO_PIN_NOSENSE);		
-}
+		uint32_t err_code;
 
+    if (!nrf_drv_gpiote_is_init())
+    {
+        err_code = nrf_drv_gpiote_init();
+        VERIFY_SUCCESS(err_code);
+    }	  
+
+		nrf_gpiote_task_configure(ULTRASONIC_GPIOTE_CH0,
+															ULTRASONIC_PPI_GPIO_PIN,
+															NRF_GPIOTE_POLARITY_HITOLO,
+															NRF_GPIOTE_INITIAL_VALUE_HIGH);
+		
+		nrf_gpiote_task_enable(ULTRASONIC_GPIOTE_CH0);
+
+	  nrf_gpio_cfg(ULTRASONIC_PPI_GPIO_PIN,
+								 NRF_GPIO_PIN_DIR_OUTPUT,
+								 NRF_GPIO_PIN_INPUT_DISCONNECT,
+								 NRF_GPIO_PIN_NOPULL,
+								 NRF_GPIO_PIN_H0H1,
+								 NRF_GPIO_PIN_NOSENSE);		
+		
+		
+		NRF_PPI->CH[ULTRASONIC_PPI_CH_TIMER_START].EEP = (uint32_t)&NRF_RADIO->EVENTS_END;
+    NRF_PPI->CH[ULTRASONIC_PPI_CH_TIMER_START].TEP = (uint32_t)&ULTRASONIC_TIMER.p_reg->TASKS_START;
+		
+    NRF_PPI->CH[ULTRASONIC_PPI_CH_GPIO_LOW].EEP  = (uint32_t)&ULTRASONIC_TIMER.p_reg->EVENTS_COMPARE[0];
+    NRF_PPI->CH[ULTRASONIC_PPI_CH_GPIO_LOW].TEP  = (uint32_t)&NRF_GPIOTE->TASKS_CLR[ULTRASONIC_GPIOTE_CH0];
+
+    NRF_PPI->CH[ULTRASONIC_PPI_CH_GPIO_HIGH].EEP  = (uint32_t)&ULTRASONIC_TIMER.p_reg->EVENTS_COMPARE[1];
+    NRF_PPI->CH[ULTRASONIC_PPI_CH_GPIO_HIGH].TEP  = (uint32_t)&NRF_GPIOTE->TASKS_SET[ULTRASONIC_GPIOTE_CH0];
+		
+		NRF_RADIO->EVENTS_END = 0;
+    ULTRASONIC_TIMER.p_reg->EVENTS_COMPARE[0] = 0;
+		ULTRASONIC_TIMER.p_reg->EVENTS_COMPARE[1] = 0;
+
+    NRF_PPI->CHENSET = 1 << ULTRASONIC_PPI_CH_TIMER_START | 
+		                   1 << ULTRASONIC_PPI_CH_GPIO_LOW |
+											 1 << ULTRASONIC_PPI_CH_GPIO_HIGH;
+		
+		return NRFX_SUCCESS;
+}
+uint32_t test_isr_cnt = 0;
+void radio_tx_high_freq_timer_event_handler(nrf_timer_event_t event_type, void* p_context)
+{
+		switch (event_type)
+    {
+        case NRF_TIMER_EVENT_COMPARE1:	
+						test_isr_cnt++;
+            break;
+				
+        default:
+            //Do nothing.
+            break;
+    }
+}
+static void radio_tx_high_freqtimer_init(void)
+{
+		ret_code_t err_code;
+	  uint32_t cc0_ticks, cc1_ticks;
+	
+	  //Configure TIMER_LED for generating simple light effect - leds on board will invert his state one after the other.
+    nrf_drv_timer_config_t timer_cfg = NRF_DRV_TIMER_DEFAULT_CONFIG;
+    err_code = nrf_drv_timer_init(&ULTRASONIC_TIMER, &timer_cfg, 
+	                                 radio_tx_high_freq_timer_event_handler);
+    APP_ERROR_CHECK(err_code);
+
+	
+    cc0_ticks = nrf_drv_timer_us_to_ticks(&ULTRASONIC_TIMER, EVENT_END_GPIO_LOW_DELAY_US);
+		cc1_ticks = nrf_drv_timer_us_to_ticks(&ULTRASONIC_TIMER, GPIO_LOW_TO_HIGH_DELAY_US);
+	
+    /*set CC0*/
+    nrf_drv_timer_extended_compare(&ULTRASONIC_TIMER, NRF_TIMER_CC_CHANNEL0,
+                                  	cc0_ticks,
+                                   	0,
+	                                  false);
+    nrf_drv_timer_extended_compare(&ULTRASONIC_TIMER, NRF_TIMER_CC_CHANNEL1,
+                                  	cc1_ticks,
+                                   	NRF_TIMER_SHORT_COMPARE1_STOP_MASK | NRF_TIMER_SHORT_COMPARE1_CLEAR_MASK, 
+	                                  true); 	
+}
 /***********victor add end*/
 
 
@@ -110,12 +197,6 @@ void nrf_esb_event_handler(nrf_esb_evt_t const * p_event)
 							  if(rx_payload.data[PACK_TYPE_OFFSET] == PACK_TYPE_IMU)
 								{
 										nrf_gpio_pin_write(LED_1, (rx_payload.data[LED_OFFSET] < LED_DUTY_CNT));
-									
-										if(rx_payload.data[HAVE_SYNC_FLAG_OFFSET] == true)  /*this imu followed a sync */
-										{
-												/*set PPI and GPIO*/
-												
-										}
 								}
 								else /*PACK_TYPE_SYNC*/
 								{
@@ -181,7 +262,7 @@ int main(void)
 
     gpio_init();
 
-		ultrasonic_ppi_gpio_init();
+		ultrasonic_ppi_gpio_init();  /*victor add */
 	
     err_code = NRF_LOG_INIT(NULL);
     APP_ERROR_CHECK(err_code);
@@ -189,6 +270,8 @@ int main(void)
     NRF_LOG_DEFAULT_BACKENDS_INIT();
 
     clocks_start();
+	
+	  radio_tx_high_freqtimer_init();  /*victor add */
 
     err_code = esb_init();
     APP_ERROR_CHECK(err_code);

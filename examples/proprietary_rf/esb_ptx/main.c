@@ -258,7 +258,7 @@ void radio_tx_high_freq_timer_event_handler(nrf_timer_event_t event_type, void* 
             break;
     }
 }
-static void radio_tx_timer_init(void)
+static void radio_tx_high_freqtimer_init(void)
 {
 		ret_code_t err_code;
 	  uint32_t cc0_ticks;
@@ -431,7 +431,7 @@ int main(void)
 		lfclk_config();
 		app_timers_init();
 	
-		radio_tx_timer_init();
+		radio_tx_high_freqtimer_init();
 	
     NRF_LOG_INFO("Enhanced ShockBurst Transmitter Example started.");
 	
